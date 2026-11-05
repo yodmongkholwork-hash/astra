@@ -161,3 +161,35 @@ body {
     transition-duration: 0.001ms !important;
   }
 }
+
+/* ============================================================
+   The Mystic Realms — HUD
+   ============================================================ */
+.realm-root { touch-action: none; }
+.realm-marker {
+  display: flex; align-items: center; gap: .5rem; white-space: nowrap;
+  padding: .3rem .8rem .3rem .4rem; border-radius: 999px;
+  background: rgb(5 3 13 / .62); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+  border: 1px solid color-mix(in oklab, var(--c) 55%, transparent);
+  color: var(--color-ivory); font-family: var(--font-display); font-size: 11px; letter-spacing: .08em;
+  box-shadow: 0 0 24px -6px var(--c);
+  transition: transform .3s, opacity .3s, box-shadow .3s; cursor: pointer;
+}
+.realm-marker:hover, .realm-marker:focus-visible { transform: scale(1.08); box-shadow: 0 0 34px -2px var(--c); outline: none; }
+.realm-marker.is-selected { border-color: var(--c); box-shadow: 0 0 40px 0 var(--c); }
+.realm-marker.is-dimmed { opacity: .45; }
+.realm-marker__dot { width: 10px; height: 10px; border-radius: 999px; background: var(--c); box-shadow: 0 0 10px var(--c); animation: pulse-glow 2.4s ease-in-out infinite; }
+.realm-marker__index { color: var(--color-gold); margin-right: .4rem; opacity: .8; }
+.realm-chip {
+  display: flex; align-items: center; gap: .6rem; padding: .55rem .9rem; border-radius: 1rem;
+  background: rgb(5 3 13 / .6); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgb(255 255 255 / .1); transition: border-color .3s, transform .3s, box-shadow .3s;
+}
+.realm-chip:hover, .realm-chip:focus-visible { border-color: color-mix(in oklab, var(--c) 70%, transparent); transform: translateY(-2px); outline: none; }
+.realm-chip.is-selected { border-color: var(--c); box-shadow: 0 0 26px -8px var(--c); }
+.realm-panel {
+  background: linear-gradient(160deg, rgb(20 12 40 / .82), rgb(5 3 13 / .78));
+  backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+  border: 1px solid color-mix(in oklab, var(--c) 40%, transparent);
+  box-shadow: 0 0 80px -30px var(--c), inset 0 1px 0 rgb(255 255 255 / .05);
+}

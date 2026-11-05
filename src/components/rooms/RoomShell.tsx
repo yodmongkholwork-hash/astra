@@ -10,6 +10,8 @@ import Starfield from "@/components/cosmos/Starfield";
 import { Motes, Nebula } from "@/components/cosmos/Atmosphere";
 import { getPersona } from "@/lib/data/personas";
 import { getRoom, ROOMS, type RoomSlug } from "@/lib/data/rooms";
+import { locationForRoom } from "@/lib/realms/locations";
+import Link from "next/link";
 import type { ReadingPayload } from "@/lib/types";
 import { RoomReadingContext } from "./RoomContext";
 
@@ -73,6 +75,9 @@ export default function RoomShell({ slug }: { slug: RoomSlug }) {
           <button type="button" onClick={(e) => travelTo("universe", { x: e.clientX, y: e.clientY })} className="flex shrink-0 items-center gap-2 font-display text-sm tracking-[0.25em] text-gold-bright">
             <span aria-hidden>←</span> ASTRA
           </button>
+          <Link href={`/realms?focus=${locationForRoom(slug)?.id ?? "castle"}`} className="hidden shrink-0 rounded-full border border-gold/30 px-3 py-1 font-display text-[10px] uppercase tracking-[0.25em] text-gold/90 transition hover:border-gold sm:inline-block" title="กลับสู่อาณาจักร 3 มิติ">
+            ✦ Realms
+          </Link>
           <div className="no-scrollbar ml-auto flex gap-1 overflow-x-auto">
             {ROOMS.map((r) => (
               <button

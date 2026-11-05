@@ -139,6 +139,70 @@ AI ได้รับ `facts` เป็นข้อมูลที่ "ห้า
 
 ---
 
+## ✦ The Mystic Realms — ชั้นประสบการณ์ 3 มิติ (`/realms`)
+
+> *Beyond the Stars. Beyond Destiny.* — อาณาจักรเวทมนตร์แบบ real-time 3D (React Three Fiber) ที่ "ครอบ" ระบบเดิมไว้ ไม่ได้แทนที่ ทุกห้อง เครื่องคำนวณ แชท AI, Demo Mode, โปรไฟล์ และ Supabase ทำงานเหมือนเดิม
+
+เข้าได้จากปุ่ม **The Mystic Realms · 3D** ในหน้าแรก, เมนู "Mystic Realms" หรือ `http://localhost:3000/realms`
+
+### สิ่งที่ทำแล้ว (Phase 1–2)
+- **Kingdom Entrance:** กล้องเริ่มเหนือทะเลเมฆ ร่อนลงทะลุเมฆ เผยอาณาจักร บินเข้าหาปราสาท แล้วหยุดที่ภาพ establishing shot (มี letterbox + ไตเติล กด SKIP / Esc / Enter เพื่อข้าม)
+- **Grand Royal Castle (procedural):** ผาศิลา, กำแพงและหอคอยวงนอก 8 หอ, keep 3 ชั้น, หอคอยใหญ่ 4 หอ, ยอดแหลม, คริสตัลสวรรค์หมุนพร้อมวงแหวนทอง, หน้าต่างเรืองแสง (instanced), วงอักขระรูน, คูน้ำเวทมนตร์
+- **โลก:** ภูมิประเทศ + เทือกเขา (ridged noise, ยอดหิมะต้องแสงจันทร์), แม่น้ำเรืองแสง (shader ไหล), เกาะลอย 8 เกาะพร้อมน้ำตก + สะพานทอง, ท้องฟ้า gradient + แถบออโรรา + ดวงจันทร์, ดาว, god rays, ทะเลเมฆ 3 ชั้น (shader ไม่ใช้ texture), อนุภาค, Celestial Wyvern บินวน, fog
+- **8 ดินแดน** แต่ละแห่งมีสถาปัตยกรรม แสง และวัตถุเคลื่อนไหวของตัวเอง (ไพ่ลอย / กลไกจักรราศี + ดาวเคราะห์ / ปรางค์ทอง + ดาวเก้าดวง / เจดีย์ 5 ชั้น + หยินหยาง + ธาตุ / เสาอักขระ + วงแหวนตัวเลข / ป่าเรืองแสง + moon-gate / หอคอยพ่อมด + ฝ่ามือเรืองแสง)
+- **Overview + Navigation:** มุมมองทางอากาศที่แพนช้า ๆ + parallax ตามเมาส์, มาร์กเกอร์ลำแสงพร้อมป้ายกดได้, แถบเลือกดินแดน, mini-map, แผงข้อมูล + guardian, มุมกล้อง 3 ระดับ (กว้าง / กลาง / ใกล้)
+- **Click-to-travel:** บินโค้งยกสูงข้ามฉาก, **Return:** ดึงกล้องกลับภาพรวมโดยไฮไลต์ดินแดนเดิมไว้
+- **Room entry:** กล้องพุ่งเข้าอาคาร → portal flash → ห้องเดิมของ ASTRA (ปุ่ม ✦ Realms ในห้องพากลับมาที่ดินแดนนั้น)
+- **Input:** เมาส์, touch, คีย์บอร์ด (← → เลือกดินแดน, Enter เข้าห้อง, 1/2/3 มุมกล้อง, Esc กลับภาพรวม)
+
+### สถาปัตยกรรมกล้อง (`components/realms/camera/CameraDirector.tsx`)
+```
+RealmExperience (state machine)            CameraDirector (ใน Canvas)
+loading → intro → overview ⇄ travel → focus → entering
+        │ issue(CameraCommand) ─────────────▶ snapshot ตำแหน่ง/จุดมอง "จริง" ปัจจุบัน
+        │                                     สร้าง CatmullRom 2 เส้น (ตา + จุดมอง)
+        │ ◀──────────── onArrive(key) ─────── ease ไปตามเส้น → ถึงแล้วค่อย blend idle layer
+```
+- คำสั่ง: `path` (ฉากเปิด), `arc` (บินโค้งยกสูงตามระยะทาง), `direct` (ดันกล้องเข้าอาคาร), `cut` (deep link / reduced motion)
+- เพราะทุกคำสั่งเริ่มจากสถานะจริงของกล้อง จึงไม่มีการกระโดด แม้กดเปลี่ยนจุดหมายกลางทาง
+- Idle layer: แพนทางอากาศใน overview, ส่ายเบา ๆ ใน focus, parallax เมาส์ — เป็นค่าบวกเพิ่มที่ค่อย ๆ blend
+- Off-axis framing (`setViewOffset`) เลื่อนวัตถุหลบแผงข้อมูล (ขวาบน desktop / ขึ้นบนมือถือ) และขยาย FOV บนจอแนวตั้ง
+- ข้อมูลช็อตทั้งหมดอยู่ใน `lib/realms/locations.ts` (ปรับมุมกล้องได้โดยไม่แตะโค้ดกล้อง)
+
+### โครงสร้าง
+```
+src/app/realms/page.tsx
+src/lib/realms/       locations.ts (8 ดินแดน, ช็อตกล้อง, intro path, overview) · quality.ts (Low/Med/High + auto-detect + WebGL check)
+src/components/realms/
+  RealmExperience.tsx  state machine + HUD + loading + fallback 2D
+  KingdomCanvas.tsx    ประกอบฉาก, แสง, bloom (High), framing
+  camera/              CameraDirector
+  world/               Sky · Terrain · noise · Castle · FloatingIslands · River · Clouds · GodRays · Creatures · Landmarks · Markers · materials
+  ui/                  MiniMap
+```
+
+### Performance
+| | Low | Medium | High |
+|---|---|---|---|
+| ความละเอียด (DPR) | 0.75–1 | 1–1.5 | 1–2 |
+| ภูมิประเทศ | 96² | 160² | 240² |
+| เมฆ / อนุภาค | 45 / 160 | 110 / 420 | 200 / 900 |
+| สัตว์บิน / god rays | – / – | 5 / ✓ | 9 / ✓ |
+| เงา / Bloom | – | – | ✓ / ✓ |
+
+- เลือกระดับอัตโนมัติ (touch / จอเล็ก / CPU ≤ 4 core → Low) และเปลี่ยนได้ที่มุมขวาบน (จำค่าไว้)
+- ไม่มี asset ภายนอกเลย (ไม่มี GLB/texture ให้ดาวน์โหลด) ฉาก 3D ทั้งหมด lazy-load แยก chunk และไม่ทำ SSR
+- `AdaptiveDpr` ลดความละเอียดอัตโนมัติเมื่อเฟรมตก
+- `prefers-reduced-motion`: ข้ามฉากเปิด, เปลี่ยนการบินเป็น cut, ปิด idle drift
+- อุปกรณ์ไม่รองรับ WebGL → แผนที่ 2D ที่เข้าห้องได้ครบ
+
+### ขั้นต่อไป (Phase 3–7)
+- Phase 3–4: ขยายแต่ละดินแดนเป็นสภาพแวดล้อมเต็ม (ภายใน, close-up วัตถุสำคัญ) + โหลด GLB จริงด้วย `useGLTF` เมื่อมีโมเดล (โครง `Landmarks` แยกต่อดินแดนรองรับการสลับแล้ว)
+- Phase 5: Guardian ใหม่ (Ajarn Ratri, Master Yin, Numeria, Dreamkeeper, Palmora) เป็น persona จริงใน `personas.ts` — ตอนนี้ map ไปยัง persona เดิมชั่วคราว (ดู `guardian.personaId` ใน `locations.ts`)
+- Phase 7: เสียงประกอบ, ปรับจูน performance บนอุปกรณ์จริง
+
+---
+
 ## ส่วนที่ต้องเชื่อมต่อเพิ่มเติม (Roadmap)
 - [ ] **Ephemeris engine** สำหรับ Moon / Rising / 12 เรือน / Aspects (แนะนำ `astronomy-engine` หรือ Swiss Ephemeris ฝั่ง server) + geocoding สถานที่เกิด → lat/lng/timezone
 - [ ] **สมผุสดาวไทย** (สุริยยาตร์) แทนตำแหน่งดาวตัวอย่างในห้องโหราศาสตร์ไทย (ตอนนี้คำนวณจริงเฉพาะอาทิตย์และลัคนาแบบประมาณ)
@@ -148,6 +212,6 @@ AI ได้รับ `facts` เป็นข้อมูลที่ "ห้า
 - [ ] บันทึก `chat_sessions/chat_messages` ลง Supabase (ตารางพร้อมแล้ว — ตอนนี้บันทึกเฉพาะ `readings`)
 - [ ] Daily Horoscope ที่สร้างโดย AI รายวัน (cron → `daily_horoscopes`)
 - [ ] Rate limit แบบกระจาย (Upstash/Supabase) เมื่อ deploy หลาย instance
-- [ ] Lottie / React Three Fiber: ยังไม่ได้ติดตั้ง เพราะแอนิเมชันปัจจุบันทำด้วย CSS/SVG/Canvas ได้เบากว่า — เพิ่มได้เฉพาะจุดที่ต้องการ 3D จริง (เช่น ลูกแก้วหมุนแบบ refraction)
+- [ ] Lottie: ยังไม่ได้ติดตั้ง (แอนิเมชัน 2D ใช้ CSS/SVG/Canvas) · React Three Fiber ใช้แล้วใน `/realms`
 
 > คำทำนายใน ASTRA มีไว้เพื่อความบันเทิงและการสะท้อนตนเอง

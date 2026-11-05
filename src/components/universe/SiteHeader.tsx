@@ -25,6 +25,7 @@ export default function SiteHeader({ demo }: { demo: boolean }) {
           <Link href="/#chambers" className="transition hover:text-gold-bright">ห้องดูดวง</Link>
           <Link href="/#oracles" className="transition hover:text-gold-bright">หมอดู AI</Link>
           <Link href="/#daily" className="transition hover:text-gold-bright">ดวงรายวัน</Link>
+          <Link href="/realms" className="transition hover:text-gold-bright">Mystic Realms</Link>
           <Link href="/profile" className="transition hover:text-gold-bright">จักรวาลของฉัน</Link>
         </nav>
         <div className="flex items-center gap-2">

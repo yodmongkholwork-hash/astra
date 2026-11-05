@@ -1,6 +1,7 @@
 "use client";
 
 import { motion, useReducedMotion, useScroll, useTransform } from "framer-motion";
+import Link from "next/link";
 import { useRef } from "react";
 import CrystalOrb from "@/components/cosmos/CrystalOrb";
 import { useAstra } from "@/components/providers/AstraProvider";
@@ -79,6 +80,11 @@ export default function Hero() {
               เปิดไพ่ทันที ✦
             </button>
           </div>
+          <Link href="/realms" className="group mt-6 inline-flex items-center gap-3 rounded-full border border-gold/30 bg-black/30 px-5 py-2 font-display text-[11px] uppercase tracking-[0.3em] text-gold-bright backdrop-blur transition hover:border-gold hover:shadow-[0_0_30px_-6px_#e6c47a]">
+            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-gold" />
+            The Mystic Realms · 3D
+            <span aria-hidden className="transition group-hover:translate-x-1">→</span>
+          </Link>
         </motion.div>
       </motion.div>
 
