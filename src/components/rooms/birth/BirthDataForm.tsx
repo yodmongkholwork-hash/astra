@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { PLACES, resolvePlace } from "@/lib/data/places";
+import { placeGroups, PLACES, resolvePlace } from "@/lib/data/places";
 import { loadProfile, saveProfile } from "@/lib/store";
 
 /** Birth data shared by every chart room; remembered in the profile so it is typed once. */
@@ -68,10 +68,14 @@ export default function BirthDataForm({ value, onChange, needsTime = "แนะ�
       <label className="block">
         <span className="mb-1 block text-xs text-mist/80">สถานที่เกิด</span>
         <select value={value.placeId} onChange={(e) => onChange({ placeId: e.target.value, tz: PLACES.find((p) => p.id === e.target.value)?.tz ?? value.tz })} className="astra-input">
-          {PLACES.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.name} · {p.en}
-            </option>
+          {placeGroups().map((g) => (
+            <optgroup key={g.label} label={g.label}>
+              {g.places.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name} · {p.en}
+                </option>
+              ))}
+            </optgroup>
           ))}
           <option value="custom">อื่น ๆ — กรอกพิกัดเอง</option>
         </select>

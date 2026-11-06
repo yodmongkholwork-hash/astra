@@ -7,7 +7,7 @@ import PersonaAvatar from "@/components/personas/PersonaAvatar";
 import { useAstra } from "@/components/providers/AstraProvider";
 import { getPersona, PERSONAS } from "@/lib/data/personas";
 import { getRoom } from "@/lib/data/rooms";
-import { PLACES, resolvePlace } from "@/lib/data/places";
+import { placeGroups, resolvePlace } from "@/lib/data/places";
 import { chineseYear, lifePathNumber, seededRandom, sunSign, thaiChart } from "@/lib/engines";
 import { dailyOmen } from "@/lib/data/omens";
 import { deleteReading, loadHistory, loadProfile, saveProfile, STORE_EVENT } from "@/lib/store";
@@ -89,8 +89,12 @@ export default function ProfileDashboard() {
           <label className="block">
             <span className="mb-1 block text-xs text-mist/80">สถานที่เกิด</span>
             <select value={resolvePlace(profile.birthPlace)?.id ?? (profile.birthPlace === "custom" ? "custom" : "bangkok")} onChange={(e) => setProfile({ ...profile, birthPlace: e.target.value })} className="astra-input">
-              {PLACES.map((pl) => (
-                <option key={pl.id} value={pl.id}>{pl.name} · {pl.en}</option>
+              {placeGroups().map((g) => (
+                <optgroup key={g.label} label={g.label}>
+                  {g.places.map((pl) => (
+                    <option key={pl.id} value={pl.id}>{pl.name} · {pl.en}</option>
+                  ))}
+                </optgroup>
               ))}
               <option value="custom">อื่น ๆ — กรอกพิกัดในห้องดูดวง</option>
             </select>
