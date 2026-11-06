@@ -5,7 +5,7 @@ import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { Bloom, EffectComposer, Vignette } from "@react-three/postprocessing";
 import { Suspense, useRef } from "react";
 import * as THREE from "three";
-import type { LocationId } from "@/lib/realms/locations";
+import { INTRO_PATH, type LocationId } from "@/lib/realms/locations";
 import { QUALITY, type Quality } from "@/lib/realms/quality";
 import CameraDirector, { type CameraCommand, type IdleMode } from "./camera/CameraDirector";
 import Castle from "./world/Castle";
@@ -88,6 +88,14 @@ export default function KingdomCanvas(p: KingdomCanvasProps) {
       className="!fixed inset-0"
       aria-label="อาณาจักรอัสตรา ฉาก 3 มิติ"
       role="img"
+      onCreated={(state) => {
+        // frame the first shot of the entrance before anything renders (no snap when it starts)
+        state.camera.position.set(...INTRO_PATH.pos[0]);
+        state.camera.lookAt(...INTRO_PATH.target[0]);
+        // test probe: automated checks set window.__ASTRA_TEST__ to read the live camera/scene
+        const w = window as unknown as { __ASTRA_TEST__?: boolean; __astra?: unknown };
+        if (w.__ASTRA_TEST__) w.__astra = { camera: state.camera, scene: state.scene, gl: state.gl, size: () => state.size };
+      }}
     >
       <color attach="background" args={["#05030d"]} />
       <fogExp2 attach="fog" args={["#120a2a", 0.00085]} />

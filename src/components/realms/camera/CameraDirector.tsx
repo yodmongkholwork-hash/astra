@@ -54,6 +54,7 @@ export default function CameraDirector({ command, idle, onArrive, onProgress }: 
     idleW: 0,
     idleClock: 0,
     parallax: new THREE.Vector2(),
+    init: false,
   });
 
   // build splines whenever a new command arrives
@@ -71,8 +72,11 @@ export default function CameraDirector({ command, idle, onArrive, onProgress }: 
       onArrive(command.key);
       return;
     }
+    // start from what is on screen right now (idle drift included), then drop the
+    // idle layer: it is baked into the start point, so it must not be added again
     const fromPos = camera.position.clone();
     const fromTarget = s.target.clone();
+    s.idleW = 0;
     let eyePts: THREE.Vector3[];
     let lookPts: THREE.Vector3[];
 
@@ -110,14 +114,19 @@ export default function CameraDirector({ command, idle, onArrive, onProgress }: 
   useFrame((_, rawDt) => {
     const dt = Math.min(rawDt, 0.1); // avoid lurches after tab switches
     const s = state.current;
+    if (!s.init) {
+      // adopt the camera's initial placement so nothing snaps before the first command
+      s.basePos.copy(camera.position);
+      s.baseTarget.copy(camera.position).add(camera.getWorldDirection(new THREE.Vector3()).multiplyScalar(100));
+      s.target.copy(s.baseTarget);
+      s.init = true;
+    }
 
     if (s.active && s.eye && s.look) {
       s.t = Math.min(1, s.t + dt / s.duration);
       const e = s.cinematic ? easeCinematic(s.t) : easeInOut(s.t);
       s.eye.getPoint(e, s.basePos);
       s.look.getPoint(e, s.baseTarget);
-      // fade idle layer out during flight
-      s.idleW = Math.max(0, s.idleW - dt * 1.5);
       onProgress?.(s.t);
       if (s.t >= 1) {
         s.active = false;

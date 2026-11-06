@@ -63,6 +63,11 @@ function RealmSession() {
   const rest = useRef<Pose>(OVERVIEW); // last settled pose, restored after a quality switch
   const deepLink = useRef<LocationId | null>(null);
   const readyOnce = useRef(false);
+  const holdTimer = useRef<number | null>(null);
+  const lastInput = useRef<CameraCommandInput | null>(null);
+  useEffect(() => () => {
+    if (holdTimer.current) window.clearTimeout(holdTimer.current);
+  }, []);
 
   /* ---------- boot ---------- */
   useEffect(() => {
@@ -87,7 +92,11 @@ function RealmSession() {
     (c: CameraCommandInput, then?: () => void) => {
       const key = ++keyRef.current;
       const input: CameraCommandInput = reduce && c.kind !== "cut" ? { kind: "cut", to: "to" in c ? c.to : OVERVIEW } : c;
+      // any new camera move cancels a scheduled one (e.g. the post-entrance rise)
+      if (holdTimer.current) window.clearTimeout(holdTimer.current);
+      holdTimer.current = null;
       pending.current = then ? { key, then } : null;
+      lastInput.current = input;
       setCommand({ ...input, key } as CameraCommand);
     },
     [reduce],
@@ -141,7 +150,7 @@ function RealmSession() {
     issue({ kind: "path", pos: INTRO_PATH.pos, target: INTRO_PATH.target, duration: 15 }, () => {
       rest.current = getLocation("castle")!.shots.wide;
       // hold the establishing shot a beat, then rise into the overview
-      window.setTimeout(() => toOverview(), 1400);
+      holdTimer.current = window.setTimeout(() => toOverview(), 1400);
     });
   }, [issue, toOverview]);
 
@@ -188,6 +197,12 @@ function RealmSession() {
   }, [issue, reduce, router, selected, shot, travelTo]);
 
   const changeQuality = (q: Quality) => {
+    if (q === quality) return;
+    // the renderer is rebuilt: land the camera where it was heading and finish that move
+    const inFlight = pending.current;
+    const c = lastInput.current;
+    const dest: Pose = inFlight && c && c.kind !== "path" ? c.to : inFlight && c?.kind === "path" ? getLocation("castle")!.shots.wide : rest.current;
+    issue({ kind: "cut", to: dest }, inFlight?.then);
     setQuality(q);
     try {
       localStorage.setItem(QUALITY_KEY, q);
@@ -229,7 +244,7 @@ function RealmSession() {
   const hud = phase === "overview" || phase === "focus" || phase === "travel";
 
   return (
-    <div className="realm-root fixed inset-0 overflow-hidden bg-[#05030d] text-ivory">
+    <div className="realm-root fixed inset-0 overflow-hidden bg-[#05030d] text-ivory" data-phase={phase} data-dest={dest}>
       {supported && (
         <KingdomCanvas
           quality={quality}
@@ -280,7 +295,7 @@ function RealmSession() {
       {/* top bar */}
       <AnimatePresence>
         {hud && (
-          <motion.header key="top" initial={{ opacity: 0, y: -16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="fixed inset-x-0 top-0 z-30 flex items-center gap-3 px-4 py-3 sm:px-6">
+          <motion.header key="top" initial={{ opacity: 0, y: -16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="pointer-events-none fixed inset-x-0 top-0 z-30 flex items-center gap-3 px-4 py-3 sm:px-6 [&>*]:pointer-events-auto">
             <Link href="/" className="font-display text-sm tracking-[0.35em] text-gilded" aria-label="ASTRA หน้าแรก">
               ✦ ASTRA
             </Link>
@@ -312,9 +327,9 @@ function RealmSession() {
       {/* location rail */}
       <AnimatePresence>
         {(phase === "overview" || (phase === "travel" && dest === "overview")) && (
-          <motion.nav key="rail" aria-label="ดินแดนในอาณาจักร" initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 30 }} className="fixed inset-x-0 bottom-0 z-30 px-3 pb-4 sm:px-6 sm:pb-6">
+          <motion.nav key="rail" aria-label="ดินแดนในอาณาจักร" initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 30 }} className="pointer-events-none fixed inset-x-0 bottom-0 z-30 px-3 pb-4 sm:px-6 sm:pb-6">
             <p className="mb-2 text-center font-display text-[10px] uppercase tracking-[0.4em] text-gold/80">Choose your destination · ← → เพื่อเลือก</p>
-            <ul className="no-scrollbar mx-auto flex max-w-6xl gap-2 overflow-x-auto pb-1 sm:justify-center">
+            <ul className="no-scrollbar pointer-events-auto mx-auto flex w-fit max-w-full gap-2 overflow-x-auto pb-1 sm:flex-wrap sm:justify-center sm:overflow-visible lg:max-w-6xl [@media(max-height:500px)]:flex-nowrap [@media(max-height:500px)]:overflow-x-auto">
               {LOCATIONS.map((l) => (
                 <li key={l.id} className="shrink-0">
                   <button type="button" onClick={() => flyTo(l.id)} className={`realm-chip ${selected === l.id ? "is-selected" : ""}`} style={{ ["--c" as string]: l.color }}>
@@ -341,7 +356,7 @@ function RealmSession() {
             animate={{ opacity: phase === "focus" ? 1 : 0.55, x: 0 }}
             exit={{ opacity: 0, x: -30 }}
             transition={{ duration: 0.6 }}
-            className="realm-panel fixed bottom-4 left-4 right-4 z-30 max-w-md rounded-3xl p-5 sm:bottom-8 sm:left-8 sm:right-auto sm:p-6"
+            className="realm-panel fixed bottom-4 left-4 right-4 z-30 max-h-[calc(100dvh-5.5rem)] max-w-md overflow-y-auto overscroll-contain rounded-3xl p-5 sm:bottom-8 sm:left-8 sm:right-auto sm:max-h-[calc(100dvh-6.5rem)] sm:p-6 [@media(max-height:500px)]:bottom-3 [@media(max-height:500px)]:max-h-[calc(100dvh-4.5rem)] [@media(max-height:500px)]:p-4"
             style={{ ["--c" as string]: loc.color }}
           >
             <p className="font-display text-[10px] uppercase tracking-[0.4em]" style={{ color: loc.color }}>
@@ -349,7 +364,7 @@ function RealmSession() {
             </p>
             <h2 className="mt-1 font-display text-2xl text-gilded sm:text-3xl">{loc.name}</h2>
             <p className="font-thai-display text-sm text-ivory/80">{loc.nameTh}</p>
-            <p className="mt-3 font-serif text-[15px] leading-relaxed text-ivory/80">{loc.blurb}</p>
+            <p className="mt-3 font-serif text-[15px] leading-relaxed text-ivory/80 [@media(max-height:500px)]:hidden">{loc.blurb}</p>
 
             <div className="mt-4 flex items-center gap-3 rounded-2xl border border-white/10 bg-black/30 p-2 pr-4">
               <PersonaAvatar id={loc.guardian.personaId} size={48} />
@@ -377,7 +392,7 @@ function RealmSession() {
                 ↖ อาณาจักร
               </button>
             </div>
-            <p className="mt-3 hidden text-[10px] text-mist/50 sm:block">Enter = เข้าห้อง · 1/2/3 = มุมกล้อง · Esc = กลับภาพรวม</p>
+            <p className="mt-3 hidden text-[10px] text-mist/50 sm:block [@media(max-height:500px)]:hidden">Enter = เข้าห้อง · 1/2/3 = มุมกล้อง · Esc = กลับภาพรวม</p>
           </motion.aside>
         )}
       </AnimatePresence>

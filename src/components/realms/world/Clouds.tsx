@@ -3,6 +3,7 @@
 import { useFrame } from "@react-three/fiber";
 import { useLayoutEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
+import { INTRO_PATH } from "@/lib/realms/locations";
 
 /**
  * Volumetric-looking cloud sea built from camera-facing instanced quads.
@@ -47,6 +48,7 @@ const fragment = /* glsl */ `
 
 interface Layer {
   count: number;
+  points?: THREE.Vector3[]; // explicit puff centres (entrance corridor)
   y: [number, number];
   radius: [number, number];
   size: [number, number];
@@ -59,6 +61,21 @@ export default function Clouds({ count }: { count: number }) {
       { count: Math.round(count * 0.55), y: [390, 480], radius: [680, 1500], size: [180, 360] }, // cloud sea (entrance)
       { count: Math.round(count * 0.3), y: [90, 170], radius: [380, 900], size: [110, 220] }, // mountain wreaths
       { count: Math.round(count * 0.15), y: [20, 60], radius: [150, 700], size: [70, 130] }, // valley mist
+      // entrance corridor: a bank of puffs straddling the descent so the camera
+      // genuinely breaks through cloud cover (puffs fade as the lens passes them)
+      (() => {
+        const curve = new THREE.CatmullRomCurve3(INTRO_PATH.pos.map((p) => new THREE.Vector3(...p)));
+        const n = Math.max(12, Math.round(count * 0.12));
+        let seed = 29;
+        const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+        const points = Array.from({ length: n }, (_, i) => {
+          const p = curve.getPoint(0.08 + (i / (n - 1)) * 0.42);
+          const spread = i % 3 === 0 ? 15 : 45 + rnd() * 90; // every third puff sits right on the path
+          const a = rnd() * Math.PI * 2;
+          return new THREE.Vector3(p.x + Math.cos(a) * spread, p.y + (rnd() - 0.5) * 40, p.z + Math.sin(a) * spread * 0.6);
+        });
+        return { count: n, points, y: [0, 0], radius: [0, 0], size: [150, 260] } as Layer;
+      })(),
     ],
     [count],
   );
@@ -96,7 +113,10 @@ export default function Clouds({ count }: { count: number }) {
       for (let i = 0; i < l.count; i++, k++) {
         const a = rnd() * Math.PI * 2;
         const r = l.radius[0] + Math.sqrt(rnd()) * (l.radius[1] - l.radius[0]);
-        m.makeTranslation(Math.sin(a) * r, l.y[0] + rnd() * (l.y[1] - l.y[0]), Math.cos(a) * r);
+        const y = l.y[0] + rnd() * (l.y[1] - l.y[0]);
+        const pt = l.points?.[i];
+        if (pt) m.makeTranslation(pt.x, pt.y, pt.z);
+        else m.makeTranslation(Math.sin(a) * r, y, Math.cos(a) * r);
         ref.current.setMatrixAt(k, m);
       }
     }
