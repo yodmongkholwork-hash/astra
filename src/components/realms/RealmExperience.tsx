@@ -72,7 +72,8 @@ function RealmSession() {
       const saved = localStorage.getItem(QUALITY_KEY) as Quality | null;
       if (saved === "low" || saved === "medium" || saved === "high") q = saved;
     } catch {}
-    const focus = new URLSearchParams(window.location.search).get("focus");
+    // ?focus=<id> on the Next route; #realms-<id> when ASTRA runs as a single-page bundle
+    const focus = new URLSearchParams(window.location.search).get("focus") ?? window.location.hash.match(/^#realms-([a-z]+)$/)?.[1] ?? null;
     if (focus && getLocation(focus)) deepLink.current = focus as LocationId;
     /* eslint-disable react-hooks/set-state-in-effect -- browser capabilities are only known after mount */
     setSupported(ok);
