@@ -7,7 +7,7 @@ import * as THREE from "three";
 import { LOCATIONS, type LocationId, type RealmLocation } from "@/lib/realms/locations";
 
 /** Pillar of light + pulsing ground ring + HTML label (a real <button>, so keyboard & screen readers work). */
-function Beacon({ loc, selected, dimmed, onSelect, showLabel }: { loc: RealmLocation; selected: boolean; dimmed: boolean; onSelect: (id: LocationId) => void; showLabel: boolean }) {
+function Beacon({ loc, selected, dimmed, focused, onSelect, showLabel }: { loc: RealmLocation; selected: boolean; dimmed: boolean; focused: boolean; onSelect: (id: LocationId) => void; showLabel: boolean }) {
   const ring = useRef<THREE.Mesh>(null);
   const beamMat = useMemo(
     () =>
@@ -27,12 +27,13 @@ function Beacon({ loc, selected, dimmed, onSelect, showLabel }: { loc: RealmLoca
 
   useFrame((s) => {
     const t = s.clock.elapsedTime;
-    const target = dimmed ? 0.12 : selected ? 0.95 : 0.45;
+    // once the camera is at the selected site the subject is on screen: fade its beacon so it does not cut through the shot
+    const target = dimmed ? 0.12 : selected ? (focused ? 0.05 : 0.95) : 0.45;
     beamMat.uniforms.uStrength.value += (target - beamMat.uniforms.uStrength.value) * 0.08;
     if (ring.current) {
       const k = 1 + ((t * 0.6 + loc.position[0]) % 1) * 0.8;
       ring.current.scale.setScalar(k);
-      ringMat.opacity = (1 - (k - 1) / 0.8) * (dimmed ? 0.2 : 0.7);
+      ringMat.opacity = (1 - (k - 1) / 0.8) * (dimmed ? 0.2 : selected && focused ? 0.15 : 0.7);
     }
   });
 
@@ -70,7 +71,7 @@ export default function Markers({ selected, focusMode, onSelect, visible }: { se
   return (
     <group>
       {LOCATIONS.map((l) => (
-        <Beacon key={l.id} loc={l} selected={selected === l.id} dimmed={focusMode && selected !== l.id} onSelect={onSelect} showLabel={visible && (!focusMode || selected === l.id)} />
+        <Beacon key={l.id} loc={l} selected={selected === l.id} focused={focusMode && selected === l.id} dimmed={focusMode && selected !== l.id} onSelect={onSelect} showLabel={visible && (!focusMode || selected === l.id)} />
       ))}
     </group>
   );

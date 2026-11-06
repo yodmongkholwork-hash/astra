@@ -93,9 +93,12 @@ export const LOCATIONS: RealmLocation[] = [
     position: P.tarot,
     color: "#c9a0ff",
     shots: {
-      wide: orbit(P.tarot, faceFromCenter(P.tarot, -30), 150, 90, 20),
-      medium: orbit(P.tarot, faceFromCenter(P.tarot, 15), 75, 38, 22),
-      close: orbit(P.tarot, faceFromCenter(P.tarot, 5), 30, 34, 36),
+      // establishing: plaza, braziers and the floating arcana against the mountains
+      wide: orbit(P.tarot, faceFromCenter(P.tarot, -28), 175, 85, 30),
+      // environmental: portico, portal doorway and candle-lit tiers
+      medium: orbit(P.tarot, faceFromCenter(P.tarot, 12), 78, 22, 20),
+      // magical object: the Wheel of Fortune inside the ring of Major Arcana
+      close: orbit(P.tarot, faceFromCenter(P.tarot, 4), 40, 66, 66),
     },
   },
   {
@@ -109,9 +112,12 @@ export const LOCATIONS: RealmLocation[] = [
     position: P.zodiac,
     color: "#7fb8ff",
     shots: {
-      wide: orbit(P.zodiac, faceFromCenter(P.zodiac, 25), 215, 110, 55),
-      medium: orbit(P.zodiac, faceFromCenter(P.zodiac, -10), 85, 60, 55),
-      close: orbit(P.zodiac, faceFromCenter(P.zodiac, 0), 38, 84, 82),
+      // establishing: terraces, observatory, twin towers and the mechanism in the sky
+      wide: orbit(P.zodiac, faceFromCenter(P.zodiac, 25), 240, 125, 70),
+      // environmental: tower foot, portal and the sweeping telescope
+      medium: orbit(P.zodiac, faceFromCenter(P.zodiac, -12), 118, 46, 40),
+      // magical object: the zodiac plaque ring, armillary sun and orbiting planets
+      close: orbit(P.zodiac, faceFromCenter(P.zodiac, 8), 58, 118, 116),
     },
   },
   {

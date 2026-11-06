@@ -27,6 +27,8 @@ export interface KingdomCanvasProps {
   focusMode: boolean;
   markersVisible: boolean;
   onSelect: (id: LocationId) => void;
+  /** a territory's in-scene entrance was clicked */
+  onPortal: (id: LocationId) => void;
   onArrive: (key: number) => void;
   onReady: () => void;
   /** shift the framed subject away from the info panel: "right" on desktop, "up" on mobile */
@@ -122,7 +124,7 @@ export default function KingdomCanvas(p: KingdomCanvasProps) {
         <River />
         <Castle shadows={q.shadows} />
         <FloatingIslands shadows={q.shadows} />
-        <Landmarks />
+        <Landmarks quality={p.quality} onPortal={p.onPortal} />
         {q.godRays && <GodRays />}
         {q.creatures > 0 && <Creatures count={q.creatures} />}
         <Sparkles count={q.sparkles} scale={[900, 320, 900]} position={[0, 150, 0]} size={14} speed={0.3} opacity={0.75} color="#f2d28a" />

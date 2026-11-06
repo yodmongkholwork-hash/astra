@@ -6,6 +6,7 @@ Run against a production server (`npm run build && npm start` on port 3100, or s
 node qa/regression.js   # existing ASTRA features (routes, API, rooms, engines, chat, history)
 node qa/responsive.js   # phone / tablet / desktop layouts, quality switch, reduced motion, no-WebGL
 node qa/desktop.js      # entrance, overview, camera smoothness, 8 markers, travel, return, animation
+node qa/phase3.js       # Tarot Sanctuary + Zodiac Citadel: shots, subjects in frame, in-scene portals
 ```
 
 Needs Playwright with Chromium. `locations.json` is the shot data extracted from `src/lib/realms/locations.ts`

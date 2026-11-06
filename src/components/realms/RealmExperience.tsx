@@ -255,6 +255,11 @@ function RealmSession() {
           frame={dest === "site" && (phase === "focus" || phase === "travel") ? "panel" : "center"}
           markersVisible={hud}
           onSelect={(id) => flyTo(id)}
+          onPortal={(id) => {
+            // the doorway in the scene: enter when this territory is in focus, otherwise fly there first
+            if (phase === "focus" && selected === id) enter();
+            else if (phase === "overview" || phase === "focus") flyTo(id);
+          }}
           onArrive={onArrive}
           onReady={onReady}
         />
