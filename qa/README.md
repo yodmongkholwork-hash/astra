@@ -7,6 +7,8 @@ node qa/regression.js   # existing ASTRA features (routes, API, rooms, engines, 
 node qa/responsive.js   # phone / tablet / desktop layouts, quality switch, reduced motion, no-WebGL
 node qa/desktop.js      # entrance, overview, camera smoothness, 8 markers, travel, return, animation
 node qa/phase3.js       # Tarot Sanctuary + Zodiac Citadel: shots, subjects in frame, in-scene portals
+node qa/rooms-real.js   # real-engine rooms: natal chart, Thai sidereal chart, BaZi, shared birth data
+npm run test:engine     # astronomy engine vs reference values (no browser needed)
 ```
 
 Needs Playwright with Chromium. `locations.json` is the shot data extracted from `src/lib/realms/locations.ts`

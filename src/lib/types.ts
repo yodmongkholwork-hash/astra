@@ -44,5 +44,8 @@ export interface UserProfile {
   name: string;
   birthDate: string; // YYYY-MM-DD
   birthTime: string; // HH:mm
-  birthPlace: string;
+  birthPlace: string; // a place id from lib/data/places, a typed name, or "custom"
+  birthLat?: number; // for "custom" birthplaces
+  birthLon?: number;
+  birthTz?: string;
 }

@@ -1,12 +1,11 @@
 "use client";
 
-import { useState } from "react";
-import { thaiChart, ZODIAC } from "@/lib/engines";
+import { useMemo, useState } from "react";
+import { ZODIAC } from "@/lib/engines";
+import { thaiChartExact } from "@/lib/engines/astro";
+import BirthDataForm, { birthInput, useBirthData } from "../birth/BirthDataForm";
 import { useShareReading } from "../RoomContext";
-import { Field } from "./AstrologyScene";
 
-// Demo placements: house index (0 = เมษ) → planets (Thai numerals). Real positions come from the Thai calc engine (Phase 2).
-const DEMO_PLACEMENTS: Record<number, string[]> = { 0: ["ล"], 2: ["๑", "๔"], 4: ["๕"], 6: ["๗"], 7: ["๒"], 9: ["๓", "๘"], 10: ["๖"], 11: ["๙", "๐"] };
 const PLANETS: Record<string, string> = {
   "๑": "อาทิตย์ — อำนาจ เกียรติยศ",
   "๒": "จันทร์ — จิตใจ ความรู้สึก",
@@ -23,17 +22,24 @@ const PLANETS: Record<string, string> = {
 
 export default function ThaiAstrologyScene({ glow }: { glow: string }) {
   const [focus, setFocus] = useState<string>("ล");
-  const [date, setDate] = useState("");
-  const [time, setTime] = useState("");
+  const [birth, setBirth] = useBirthData();
   const share = useShareReading();
-  const chart = date ? thaiChart(date, time || undefined) : null;
-  // engine-computed ๑ (sun) and ลัคนา replace the demo positions; other planets stay illustrative
+  const place = birthInput(birth);
+  const chart = useMemo(() => {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(birth.date)) return null;
+    try {
+      return thaiChartExact({ date: birth.date, time: birth.time || undefined, lat: place.lat, lon: place.lon, tz: place.tz });
+    } catch {
+      return null;
+    }
+  }, [birth.date, birth.time, place.lat, place.lon, place.tz]);
+  // rasi index (0 = เมษ) → planets standing in it, from the sidereal ephemeris
   const placements: Record<number, string[]> = {};
-  for (const [k, v] of Object.entries(DEMO_PLACEMENTS)) placements[Number(k)] = v.filter((p) => !chart || (p !== "๑" && (p !== "ล" || chart.lagna === null)));
   if (chart) {
-    (placements[chart.sunRasi] ??= []).push("๑");
-    if (chart.lagna !== null) (placements[chart.lagna] ??= []).unshift("ล");
+    if (chart.lagna) placements[chart.lagna.rasi] = ["ล"];
+    for (const p of chart.planets) (placements[p.rasi] ??= []).push(p.num);
   }
+  const focusPlanet = chart?.planets.find((p) => p.num === focus);
   return (
     <div className="grid items-center gap-8 md:grid-cols-[1.2fr_1fr]">
       <div className="relative mx-auto aspect-square w-full max-w-[420px]">
@@ -60,9 +66,9 @@ export default function ThaiAstrologyScene({ glow }: { glow: string }) {
                 {planets.map((p, j) => (
                   <text
                     key={p}
-                    x={120 + Math.cos(am) * (62 - j * 0) + (j - (planets.length - 1) / 2) * 11 * -Math.sin(am)}
-                    y={120 + Math.sin(am) * 62 + (j - (planets.length - 1) / 2) * 11 * Math.cos(am)}
-                    fontSize="13"
+                    x={120 + Math.cos(am) * (planets.length > 3 && j >= 3 ? 52 : 66) + ((j % 3) - (Math.min(planets.length, 3) - 1) / 2) * 10 * -Math.sin(am)}
+                    y={120 + Math.sin(am) * (planets.length > 3 && j >= 3 ? 52 : 66) + ((j % 3) - (Math.min(planets.length, 3) - 1) / 2) * 10 * Math.cos(am)}
+                    fontSize={planets.length > 3 ? 10.5 : 13}
                     textAnchor="middle"
                     dominantBaseline="central"
                     fill={focus === p ? "#fff" : "#f7e1a6"}
@@ -77,7 +83,7 @@ export default function ThaiAstrologyScene({ glow }: { glow: string }) {
             );
           })}
           <text x="120" y="114" fontSize="10" textAnchor="middle" fill="#f2c35b">ราศีจักร</text>
-          <text x="120" y="130" fontSize="7" textAnchor="middle" fill="#f2c35b" fillOpacity=".6">DEMO</text>
+          {!chart && <text x="120" y="130" fontSize="7" textAnchor="middle" fill="#f2c35b" fillOpacity=".6">กรอกวันเกิด</text>}
         </svg>
       </div>
 
@@ -90,19 +96,42 @@ export default function ThaiAstrologyScene({ glow }: { glow: string }) {
             </button>
           ))}
         </div>
-        <p className="mt-4 min-h-[3rem] text-sm text-ivory/85">{PLANETS[focus]}</p>
-        <div className="mt-4 grid grid-cols-2 gap-3">
-          <Field label="วันเกิด"><input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="astra-input" /></Field>
-          <Field label="เวลาเกิด"><input type="time" value={time} onChange={(e) => setTime(e.target.value)} className="astra-input" /></Field>
+        <p className="mt-4 min-h-[3rem] text-sm text-ivory/85">
+          {PLANETS[focus]}
+          {focus === "ล" && chart?.lagna && <span className="block text-gold-bright">สถิตราศี{chart.lagna.rasiTh} {chart.lagna.degree}</span>}
+          {focusPlanet && <span className="block text-gold-bright">สถิตราศี{focusPlanet.rasiTh} {focusPlanet.degree}</span>}
+        </p>
+        <div className="mt-4">
+          <BirthDataForm value={birth} onChange={setBirth} needsTime="ใช้หาลัคนา" />
         </div>
         {chart && (
-          <div className="mt-3 space-y-1 rounded-xl bg-black/30 p-3 text-sm">
+          <div className="mt-3 space-y-2 rounded-xl bg-black/30 p-3 text-sm">
             <p>เกิดวัน<span className="text-gold-bright">{chart.birthDay.day}</span> · ดาวประจำวัน {chart.birthDay.planet} · สีประจำวัน{chart.birthDay.color}</p>
-            <p>อาทิตย์สถิตราศี<span className="text-gold-bright">{chart.sunRasiTh}</span>{chart.lagnaTh && <> · ลัคนาราศี<span className="text-gold-bright">{chart.lagnaTh}</span></>}</p>
-            <button type="button" onClick={() => share({ room: "thai-astrology", title: `ดวงไทย ลัคนา${chart.lagnaTh ?? "(ไม่ทราบเวลา)"}`, summary: `เกิดวัน${chart.birthDay.day} · อาทิตย์ราศี${chart.sunRasiTh}${chart.lagnaTh ? ` · ลัคนาราศี${chart.lagnaTh}` : ""}`, facts: { birthDate: date, birthTime: time || null, ...chart } })} className="mt-2 w-full rounded-full bg-gradient-to-b from-gold-bright to-gold-deep py-2 text-sm text-void transition hover:brightness-110">✦ ส่งผังดวงให้หมอดูอ่าน</button>
+            <p>ลัคนาสถิตราศี<span className="text-gold-bright">{chart.lagna?.rasiTh ?? "— (ต้องมีเวลาเกิด)"}</span> · อาทิตย์สถิตราศี<span className="text-gold-bright">{chart.sunRasiTh}</span></p>
+            <p className="text-xs leading-relaxed text-ivory/70">{chart.planets.map((p) => `${p.num} ${p.rasiTh}`).join(" · ")}</p>
+            <button
+              type="button"
+              onClick={() =>
+                share({
+                  room: "thai-astrology",
+                  title: `ดวงไทย ลัคนา${chart.lagna?.rasiTh ?? "(ไม่ทราบเวลาเกิด)"} · เกิดวัน${chart.birthDay.day}`,
+                  summary: `ลัคนา${chart.lagna ? `ราศี${chart.lagna.rasiTh}` : " ไม่ทราบ"} · ${chart.planets.map((p) => `${p.th}(${p.num}) ราศี${p.rasiTh}`).join(" · ")}`,
+                  facts: {
+                    birth: { date: birth.date, time: birth.time || "unknown", place: place.placeName, utc: chart.utc },
+                    system: `sidereal (Lahiri ayanamsa ${chart.ayanamsa}°), Rahu = mean node, Ketu = opposite node`,
+                    lagna: chart.lagna && { rasi: chart.lagna.rasiTh, degree: chart.lagna.degree },
+                    planets: chart.planets.map((p) => ({ planet: `${p.num} ${p.th}`, rasi: p.rasiTh, degree: p.degree })),
+                    birthDay: chart.birthDay,
+                  },
+                })
+              }
+              className="mt-1 w-full rounded-full bg-gradient-to-b from-gold-bright to-gold-deep py-2 text-sm text-void transition hover:brightness-110"
+            >
+              ✦ ส่งผังดวงให้โหรอ่าน
+            </button>
           </div>
         )}
-        <p className="mt-4 text-xs text-mist/70">ตำแหน่งอาทิตย์และลัคนาคำนวณจากวันเวลาเกิด (สูตรประมาณ ลัคนาเลื่อน 1 ราศีทุก ~2 ชม.) · ดาวอื่นเป็นข้อมูลตัวอย่างจนกว่าจะเชื่อม engine สมผุสดาวเต็มรูปแบบ</p>
+        <p className="mt-4 text-[11px] text-mist/70">คำนวณสมผุสดาวจากตำแหน่งดาวจริงแบบนิรายนะ (อายนางศ์ลาหิรี ≈ {chart?.ayanamsa.toFixed(2) ?? "24.2"}°) · ราหูใช้จุดโหนดเฉลี่ย · เกตุคำนวณเป็นโหนดใต้ ซึ่งต่างจากสูตรเกตุแบบไทยดั้งเดิม</p>
       </div>
     </div>
   );

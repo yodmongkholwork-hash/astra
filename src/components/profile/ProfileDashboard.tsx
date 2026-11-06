@@ -7,6 +7,7 @@ import PersonaAvatar from "@/components/personas/PersonaAvatar";
 import { useAstra } from "@/components/providers/AstraProvider";
 import { getPersona, PERSONAS } from "@/lib/data/personas";
 import { getRoom } from "@/lib/data/rooms";
+import { PLACES, resolvePlace } from "@/lib/data/places";
 import { chineseYear, lifePathNumber, seededRandom, sunSign, thaiChart } from "@/lib/engines";
 import { dailyOmen } from "@/lib/data/omens";
 import { deleteReading, loadHistory, loadProfile, saveProfile, STORE_EVENT } from "@/lib/store";
@@ -85,7 +86,15 @@ export default function ProfileDashboard() {
             <Input label="วันเกิด" type="date" value={profile.birthDate} onChange={(v) => setProfile({ ...profile, birthDate: v })} />
             <Input label="เวลาเกิด" type="time" value={profile.birthTime} onChange={(v) => setProfile({ ...profile, birthTime: v })} />
           </div>
-          <Input label="สถานที่เกิด" value={profile.birthPlace} onChange={(v) => setProfile({ ...profile, birthPlace: v })} placeholder="เช่น เชียงใหม่" />
+          <label className="block">
+            <span className="mb-1 block text-xs text-mist/80">สถานที่เกิด</span>
+            <select value={resolvePlace(profile.birthPlace)?.id ?? (profile.birthPlace === "custom" ? "custom" : "bangkok")} onChange={(e) => setProfile({ ...profile, birthPlace: e.target.value })} className="astra-input">
+              {PLACES.map((pl) => (
+                <option key={pl.id} value={pl.id}>{pl.name} · {pl.en}</option>
+              ))}
+              <option value="custom">อื่น ๆ — กรอกพิกัดในห้องดูดวง</option>
+            </select>
+          </label>
           <div>
             <p className="mb-2 text-xs text-mist/80">หมอดูประจำตัว</p>
             <div className="flex flex-wrap gap-2">

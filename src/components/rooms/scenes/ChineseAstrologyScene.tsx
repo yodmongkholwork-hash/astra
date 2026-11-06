@@ -1,20 +1,28 @@
 "use client";
 
-import { useState } from "react";
-import { bazi, CHINESE_ANIMALS, FIVE_ELEMENTS } from "@/lib/engines";
+import { useMemo } from "react";
+import { CHINESE_ANIMALS, FIVE_ELEMENTS } from "@/lib/engines";
+import { baziExact } from "@/lib/engines/astro";
+import BirthDataForm, { birthInput, useBirthData } from "../birth/BirthDataForm";
 import { useShareReading } from "../RoomContext";
-import { Field } from "./AstrologyScene";
 
 const STEMS_YIN = new Set(["乙", "丁", "己", "辛", "癸"]);
 const ELEMENT_COLORS: Record<string, string> = { ไม้: "#3fbf8f", ไฟ: "#e05a4a", ดิน: "#c99a45", ทอง: "#d8dcef", น้ำ: "#5aa0ff" };
 
 export default function ChineseAstrologyScene({ glow }: { glow: string }) {
-  const [date, setDate] = useState("");
-  const [time, setTime] = useState("");
+  const [birth, setBirth] = useBirthData();
+  const place = birthInput(birth);
   const share = useShareReading();
-  const chart = /^\d{4}-\d{2}-\d{2}$/.test(date) ? bazi(date, time || undefined) : null;
+  const chart = useMemo(() => {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(birth.date)) return null;
+    try {
+      return baziExact({ date: birth.date, time: birth.time || undefined, lat: place.lat, lon: place.lon, tz: place.tz });
+    } catch {
+      return null;
+    }
+  }, [birth.date, birth.time, place.lat, place.lon, place.tz]);
   const yp = chart?.pillars[0];
-  const result = yp ? { animal: yp.animal, element: yp.element, polarity: STEMS_YIN.has(yp.stem) ? "หยิน" : "หยาง" } : null;
+  const result = yp ? { animal: yp.animal.split(" ")[0], element: yp.element, polarity: STEMS_YIN.has(yp.stem) ? "หยิน" : "หยาง" } : null;
 
   return (
     <div className="grid items-center gap-8 md:grid-cols-[1.2fr_1fr]">
@@ -60,10 +68,7 @@ export default function ChineseAstrologyScene({ glow }: { glow: string }) {
 
       <div className="glass frame-gold space-y-4 rounded-2xl p-5">
         <p className="font-display text-sm tracking-[0.2em] text-gold">BAZI · สี่เสาแห่งโชคชะตา</p>
-        <div className="grid grid-cols-2 gap-3">
-          <Field label="วันเกิด"><input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="astra-input" /></Field>
-          <Field label="เวลาเกิด"><input type="time" value={time} onChange={(e) => setTime(e.target.value)} className="astra-input" /></Field>
-        </div>
+        <BirthDataForm value={birth} onChange={setBirth} needsTime="ใช้หาเสายาม" />
         {chart && result ? (
           <>
             <div className="grid grid-cols-4 gap-2 text-center">
@@ -85,9 +90,9 @@ export default function ChineseAstrologyScene({ glow }: { glow: string }) {
                 </div>
               ))}
             </div>
-            <p className="text-sm">ปี<span className="text-gold-bright">{result.animal}</span> · ธาตุเจ้าวันเกิด (Day Master) <span style={{ color: ELEMENT_COLORS[chart.dayMaster] }}>{chart.dayMaster}</span> · {result.polarity}</p>
-            <button type="button" onClick={() => share({ room: "chinese-astrology", title: `ปาจื้อ ${chart.pillars.map((p) => p.stem + p.branch).join(" ")}`, summary: `ปี${result.animal} · Day Master ธาตุ${chart.dayMaster} · สมดุลธาตุ ${Object.entries(chart.balance).map(([k, v]) => `${k}${v}`).join(" ")}`, facts: { birthDate: date, birthTime: time || null, ...chart } })} className="w-full rounded-full bg-gradient-to-b from-gold-bright to-gold-deep py-2 text-sm text-void transition hover:brightness-110">✦ ส่งผังปาจื้อให้หมอดูอ่าน</button>
-            <p className="text-[11px] text-mist/70">*ใช้วันเริ่มสารทจีน (节气) แบบประมาณ ผู้เกิดใกล้วันเปลี่ยนสารทอาจคลาดเคลื่อน ±1 วัน</p>
+            <p className="text-sm">ปี<span className="text-gold-bright">{result.animal}</span> · ธาตุเจ้าวันเกิด (Day Master) <span style={{ color: ELEMENT_COLORS[chart.dayMasterElement] }}>{chart.dayMaster}</span> · {result.polarity}</p>
+            <button type="button" onClick={() => share({ room: "chinese-astrology", title: `ปาจื้อ ${chart.pillars.map((p) => p.stem + p.branch).join(" ")}`, summary: `ปี${result.animal} · Day Master ${chart.dayMaster} · สมดุลธาตุ ${Object.entries(chart.balance).map(([k, v]) => `${k}${v}`).join(" ")}`, facts: { birth: { date: birth.date, time: birth.time || "unknown", place: place.placeName, localSolarTime: chart.solarTime }, pillars: chart.pillars.map((p) => ({ pillar: p.label, ganzhi: p.stem + p.branch, stem: p.stemTh, animal: p.animal })), dayMaster: chart.dayMaster, fiveElementBalance: chart.balance, method: "true solar terms (节), year from 立春, day/hour on local mean solar time" } })} className="w-full rounded-full bg-gradient-to-b from-gold-bright to-gold-deep py-2 text-sm text-void transition hover:brightness-110">✦ ส่งผังปาจื้อให้หมอดูอ่าน</button>
+            <p className="text-[11px] text-mist/70">เสาปี/เดือนใช้เวลาเปลี่ยนสารท (节) จริงจากตำแหน่งดวงอาทิตย์ · ปีเริ่มที่ลี่ชุน (立春) · เสาวัน/ยามใช้เวลาสุริยคติท้องถิ่น{chart.solarTime ? ` (${chart.solarTime} น.)` : ""}</p>
           </>
         ) : (
           <p className="text-xs text-mist/70">กรอกวันเกิด (และเวลา) เพื่อคำนวณผังปาจื้อ 4 เสา ปี-เดือน-วัน-ยาม พร้อมสมดุลธาตุทั้งห้า</p>
