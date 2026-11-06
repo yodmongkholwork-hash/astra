@@ -1,8 +1,10 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ZODIAC } from "@/lib/engines";
 import { thaiChartExact } from "@/lib/engines/astro";
+import { thaiChartBoth, type ThaiMethod } from "@/lib/engines/thai-methods";
+import BoundaryNote from "../birth/BoundaryNote";
 import BirthDataForm, { birthInput, useBirthData } from "../birth/BirthDataForm";
 import { useShareReading } from "../RoomContext";
 
@@ -25,14 +27,32 @@ export default function ThaiAstrologyScene({ glow }: { glow: string }) {
   const [birth, setBirth] = useBirthData();
   const share = useShareReading();
   const place = birthInput(birth);
-  const chart = useMemo(() => {
+  const [method, setMethodState] = useState<ThaiMethod>("suriyayatra");
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("astra.thaiMethod");
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- remembered choice, read after hydration
+      if (saved === "astronomical") setMethodState(saved);
+    } catch {}
+  }, []);
+  const setMethod = (m: ThaiMethod) => {
+    setMethodState(m);
+    try {
+      localStorage.setItem("astra.thaiMethod", m);
+    } catch {}
+  };
+  // birthday facts (weekday, day planet) come from the civil date and are method-independent
+  const base = useMemo(() => {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(birth.date)) return null;
     try {
-      return thaiChartExact({ date: birth.date, time: birth.time || undefined, lat: place.lat, lon: place.lon, tz: place.tz });
+      const input = { date: birth.date, time: birth.time || undefined, lat: place.lat, lon: place.lon, tz: place.tz, placeId: birth.placeId };
+      return { exact: thaiChartExact(input), both: thaiChartBoth(input) };
     } catch {
       return null;
     }
-  }, [birth.date, birth.time, place.lat, place.lon, place.tz]);
+  }, [birth.date, birth.time, birth.placeId, place.lat, place.lon, place.tz]);
+  const chart = base ? { ...base.both[method], birthDay: base.exact.birthDay, utc: base.exact.utc, ayanamsa: base.exact.ayanamsa, sunRasiTh: base.both[method].planets[0].rasiTh } : null;
+  const other = base ? base.both[method === "suriyayatra" ? "astronomical" : "suriyayatra"] : null;
   // rasi index (0 = เมษ) → planets standing in it, from the sidereal ephemeris
   const placements: Record<number, string[]> = {};
   if (chart) {
@@ -101,25 +121,51 @@ export default function ThaiAstrologyScene({ glow }: { glow: string }) {
           {focus === "ล" && chart?.lagna && <span className="block text-gold-bright">สถิตราศี{chart.lagna.rasiTh} {chart.lagna.degree}</span>}
           {focusPlanet && <span className="block text-gold-bright">สถิตราศี{focusPlanet.rasiTh} {focusPlanet.degree}</span>}
         </p>
+        <div className="mt-4 flex gap-1.5 text-xs" role="radiogroup" aria-label="วิธีคำนวณ">
+          {(
+            [
+              ["suriyayatra", "สุริยยาตร์ (ตำราไทย)"],
+              ["astronomical", "ดาราศาสตร์ (นิรายนะ)"],
+            ] as const
+          ).map(([m, label]) => (
+            <button key={m} type="button" role="radio" aria-checked={method === m} onClick={() => setMethod(m)} className={`flex-1 rounded-full px-3 py-1.5 transition ${method === m ? "bg-gold text-void" : "border border-white/15 text-ivory/70 hover:text-ivory"}`}>
+              {label}
+            </button>
+          ))}
+        </div>
+        <p className="mt-1.5 text-[11px] text-mist/60">
+          {method === "suriyayatra" ? "ตามคัมภีร์สุริยยาตร์ แบบที่โหรและเว็บผูกดวงไทยส่วนใหญ่ใช้" : "ตำแหน่งดาวจริงบนท้องฟ้า แปลงเป็นนิรายนะด้วยอายนางศ์ลาหิรี"}
+        </p>
         <div className="mt-4">
           <BirthDataForm value={birth} onChange={setBirth} needsTime="ใช้หาลัคนา" />
         </div>
         {chart && (
           <div className="mt-3 space-y-2 rounded-xl bg-black/30 p-3 text-sm">
             <p>เกิดวัน<span className="text-gold-bright">{chart.birthDay.day}</span> · ดาวประจำวัน {chart.birthDay.planet} · สีประจำวัน{chart.birthDay.color}</p>
-            <p>ลัคนาสถิตราศี<span className="text-gold-bright">{chart.lagna?.rasiTh ?? "— (ต้องมีเวลาเกิด)"}</span> · อาทิตย์สถิตราศี<span className="text-gold-bright">{chart.sunRasiTh}</span></p>
+            <p>
+              ลัคนาสถิตราศี<span className="text-gold-bright">{chart.lagna ? `${chart.lagna.rasiTh} ${chart.lagna.degree}` : "— (ต้องมีเวลาเกิด)"}</span> · อาทิตย์สถิตราศี<span className="text-gold-bright">{chart.sunRasiTh}</span>
+            </p>
+            {other?.lagna && chart.lagna && (
+              <p className="text-[11px] text-ivory/60">
+                เทียบวิธี{method === "suriyayatra" ? "ดาราศาสตร์" : "สุริยยาตร์"}: ลัคนา{other.lagna.rasiTh} {other.lagna.degree}
+                {other.lagna.rasi !== chart.lagna.rasi && " — ต่างราศีกัน"}
+              </p>
+            )}
+            {chart.boundary && <BoundaryNote b={chart.boundary} rasiTh={chart.lagna?.rasiTh ?? ""} />}
             <p className="text-xs leading-relaxed text-ivory/70">{chart.planets.map((p) => `${p.num} ${p.rasiTh}`).join(" · ")}</p>
             <button
               type="button"
               onClick={() =>
                 share({
                   room: "thai-astrology",
-                  title: `ดวงไทย ลัคนา${chart.lagna?.rasiTh ?? "(ไม่ทราบเวลาเกิด)"} · เกิดวัน${chart.birthDay.day}`,
+                  title: `ดวงไทย (${method === "suriyayatra" ? "สุริยยาตร์" : "ดาราศาสตร์"}) ลัคนา${chart.lagna?.rasiTh ?? "(ไม่ทราบเวลาเกิด)"} · เกิดวัน${chart.birthDay.day}`,
                   summary: `ลัคนา${chart.lagna ? `ราศี${chart.lagna.rasiTh}` : " ไม่ทราบ"} · ${chart.planets.map((p) => `${p.th}(${p.num}) ราศี${p.rasiTh}`).join(" · ")}`,
                   facts: {
                     birth: { date: birth.date, time: birth.time || "unknown", place: place.placeName, utc: chart.utc },
-                    system: `sidereal (Lahiri ayanamsa ${chart.ayanamsa}°), Rahu = mean node, Ketu = opposite node`,
+                    method: method === "suriyayatra" ? "Thai Suriyayatra (classical treatise)" : `astronomical sidereal (Lahiri ayanamsa ${chart.ayanamsa}°)`,
                     lagna: chart.lagna && { rasi: chart.lagna.rasiTh, degree: chart.lagna.degree },
+                    lagnaOtherMethod: other?.lagna && { method: method === "suriyayatra" ? "astronomical" : "suriyayatra", rasi: other.lagna.rasiTh, degree: other.lagna.degree },
+                    lagnaBoundary: chart.boundary && { minutesEarlierToChange: chart.boundary.earlier?.minutes ?? null, earlierRasi: chart.boundary.earlier?.rasiTh ?? null, minutesLaterToChange: chart.boundary.later?.minutes ?? null, laterRasi: chart.boundary.later?.rasiTh ?? null },
                     planets: chart.planets.map((p) => ({ planet: `${p.num} ${p.th}`, rasi: p.rasiTh, degree: p.degree })),
                     birthDay: chart.birthDay,
                   },
@@ -131,7 +177,11 @@ export default function ThaiAstrologyScene({ glow }: { glow: string }) {
             </button>
           </div>
         )}
-        <p className="mt-4 text-[11px] text-mist/70">คำนวณสมผุสดาวจากตำแหน่งดาวจริงแบบนิรายนะ (อายนางศ์ลาหิรี ≈ {chart?.ayanamsa.toFixed(2) ?? "24.2"}°) · ราหูใช้จุดโหนดเฉลี่ย · เกตุคำนวณเป็นโหนดใต้ ซึ่งต่างจากสูตรเกตุแบบไทยดั้งเดิม</p>
+        <p className="mt-4 text-[11px] text-mist/70">
+          {method === "suriyayatra"
+            ? "สุริยยาตร์: ลัคนาจากสมผุสอาทิตย์และอันโตนาทีตามตำรา ใช้เวลาอาทิตย์ขึ้นของจังหวัดเกิด · ตำแหน่งดาวตามสูตรคัมภีร์ จึงต่างจากท้องฟ้าจริงได้บ้าง (โดยเฉพาะพุธ) · คำนวณด้วยไลบรารีโอเพนซอร์ส thai-astrology"
+            : `ดาราศาสตร์: ตำแหน่งดาวจริงแบบนิรายนะ (อายนางศ์ลาหิรี ≈ ${chart?.ayanamsa.toFixed(2) ?? "24.2"}°) · ราหูใช้จุดโหนดเฉลี่ย · เกตุเป็นโหนดใต้ ซึ่งต่างจากเกตุตามสูตรไทย`}
+        </p>
       </div>
     </div>
   );

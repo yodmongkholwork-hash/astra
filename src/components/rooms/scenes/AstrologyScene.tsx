@@ -2,6 +2,8 @@
 
 import { useMemo } from "react";
 import { natalChart } from "@/lib/engines/astro";
+import { tropicalAscBoundary } from "@/lib/engines/thai-methods";
+import BoundaryNote from "../birth/BoundaryNote";
 import { ZODIAC } from "@/lib/engines";
 import BirthDataForm, { birthInput, useBirthData } from "../birth/BirthDataForm";
 import { useShareReading } from "../RoomContext";
@@ -27,6 +29,10 @@ export default function AstrologyScene({ glow }: { glow: string }) {
       return null;
     }
   }, [birth.date, birth.time, place.lat, place.lon, place.tz]);
+  const ascBoundary = useMemo(
+    () => (chart?.ascendant ? tropicalAscBoundary({ date: birth.date, time: birth.time, lat: place.lat, lon: place.lon, tz: place.tz }) : null),
+    [chart, birth.date, birth.time, place.lat, place.lon, place.tz],
+  );
 
   // angle on the wheel: ASC (or 0° Aries) at 180°, counter-clockwise
   const ref = chart?.ascendant?.lon ?? 0;
@@ -59,6 +65,7 @@ export default function AstrologyScene({ glow }: { glow: string }) {
         system: "tropical, whole-sign houses",
         planets: chart.planets.map((p) => ({ planet: p.en, sign: p.signEn, degree: p.degree, house: p.house, retrograde: p.retrograde })),
         ascendant: chart.ascendant && { sign: ZODIAC[chart.ascendant.sign].key, degree: chart.ascendant.degree },
+        ascendantBoundary: ascBoundary && { minutesEarlierToChange: ascBoundary.earlier?.minutes ?? null, minutesLaterToChange: ascBoundary.later?.minutes ?? null },
         midheaven: chart.midheaven && { sign: ZODIAC[chart.midheaven.sign].key, degree: chart.midheaven.degree },
         aspects: chart.aspects.slice(0, 12).map((a) => `${a.a} ${a.type} ${a.b} (orb ${a.orb}°)`),
         elementBalance: chart.elements,
@@ -193,6 +200,10 @@ export default function AstrologyScene({ glow }: { glow: string }) {
                 </tbody>
               </table>
             </div>
+            {ascBoundary && chart.ascendant && <BoundaryNote b={ascBoundary} rasiTh={chart.ascendant.signTh} />}
+            <p className="rounded-lg bg-white/5 p-2 text-[11px] text-ivory/65">
+              ห้องนี้ใช้จักรราศีแบบตะวันตก (Tropical) ซึ่งต่างจากโหราศาสตร์ไทย/อินเดียราว 24° — ลัคนาและราศีของดาวจึงมักต่างจากแบบไทยหนึ่งราศี ดูลัคนาแบบไทยได้ที่ห้องโหราศาสตร์ไทย
+            </p>
             <p className="text-xs text-ivory/70">
               ธาตุเด่น: {(Object.entries(chart.elements) as [keyof typeof EL_TH, number][]).map(([k, n]) => `${EL_TH[k]} ${n}`).join(" · ")} · มุมสัมพันธ์ {chart.aspects.length} คู่
             </p>

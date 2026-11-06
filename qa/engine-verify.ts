@@ -1,5 +1,6 @@
 // Independent checks of the ASTRA astronomy engine.
 import * as A from "astronomy-engine";
+import { thaiChartBoth, suriyayatraChart } from "../src/lib/engines/thai-methods";
 import { angles, baziExact, localToUtc, natalChart, thaiChartExact, tropicalLongitude, ayanamsa } from "../src/lib/engines/astro";
 
 let fails = 0;
@@ -58,6 +59,15 @@ ok("year pillar 2000-01-01 = 己卯 (before 立春)", b3.pillars[0].stem + b3.pi
 const b4 = baziExact({ date: "1984-02-10", time: "08:00", tz: "Asia/Bangkok", lon: 100.5 });
 ok("1984 = 甲子 year", b4.pillars[0].stem + b4.pillars[0].branch === "甲子", b4.pillars[0].stem + b4.pillars[0].branch);
 ok("Bangkok local solar time correction (−18 min)", b4.solarTime === "07:42", String(b4.solarTime));
+
+// 6. Thai Suriyayatra (classical) vs astronomical, and ascendant boundary analysis
+const yala = { date: "1997-09-02", time: "22:53", tz: "Asia/Bangkok", lat: 6.541, lon: 101.281, placeId: "yala" };
+const both = thaiChartBoth(yala);
+ok("Suriyayatra lagna 1997-09-02 22:53 Yala = เมษ (matches myhora)", both.suriyayatra.lagna?.rasiTh === "เมษ", `${both.suriyayatra.lagna?.rasiTh} ${both.suriyayatra.lagna?.degree}`);
+ok("Astronomical lagna same chart = พฤษภ ~2°", both.astronomical.lagna?.rasiTh === "พฤษภ" && both.astronomical.lagna!.lon % 30 < 3, `${both.astronomical.lagna?.rasiTh} ${both.astronomical.lagna?.degree}`);
+ok("Boundary: astronomical lagna becomes เมษ ~9 min earlier", both.astronomical.boundary?.earlier?.rasiTh === "เมษ" && Math.abs((both.astronomical.boundary?.earlier?.minutes ?? 0) - 9) <= 1 && both.astronomical.boundary!.near, JSON.stringify(both.astronomical.boundary?.earlier));
+const cm = suriyayatraChart({ date: "2024-09-15", time: "08:30", tz: "Asia/Bangkok", lat: 18.788, lon: 98.985, placeId: "chiangmai" });
+ok("Suriyayatra library example (2567-09-15 08:30 Chiang Mai): lagna กันย์, sun สิงห์", cm.lagna?.rasiTh === "กันย์" && cm.planets[0].rasiTh === "สิงห์", `${cm.lagna?.rasiTh}, ${cm.planets[0].rasiTh}`);
 
 console.log(fails ? `\n${fails} FAILED` : "\nALL PASS");
 process.exit(fails ? 1 : 0);
