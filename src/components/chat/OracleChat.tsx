@@ -24,6 +24,7 @@ export default function OracleChat({ room, personaId, onPersonaChange, reading, 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [demo, setDemo] = useState<boolean | null>(null);
+  const [demoNote, setDemoNote] = useState<{ note?: string; action?: "permissions" } | null>(null);
   const [saved, setSaved] = useState(false);
   const lastReading = useRef<ReadingPayload | null>(null);
   const scroller = useRef<HTMLDivElement>(null);
@@ -52,6 +53,7 @@ export default function OracleChat({ room, personaId, onPersonaChange, reading, 
       const data = (await res.json()) as OracleResponse & { error?: string };
       if (!res.ok || data.error) throw new Error(data.error || `HTTP ${res.status}`);
       setDemo(data.demo);
+      setDemoNote(data.demo && data.note ? { note: data.note, action: data.action } : null);
       setThreads((t) => ({ ...t, [personaId]: [...next, { role: "assistant", content: data.reply }] }));
     } catch (e) {
       setError(e instanceof Error ? e.message : "เกิดข้อผิดพลาด");
@@ -138,6 +140,19 @@ export default function OracleChat({ room, personaId, onPersonaChange, reading, 
           </p>
         )}
       </div>
+
+      {demoNote?.note && (
+        <div role="note" className="mx-4 mb-3 rounded-2xl border border-lilac/30 bg-lilac/10 p-3 text-xs text-ivory/85 sm:mx-5">
+          <p>
+            <span className="text-lilac">โหมดสาธิต:</span> {demoNote.note}
+          </p>
+          {demoNote.action === "permissions" && (
+            <button type="button" onClick={() => window.dispatchEvent(new CustomEvent("astra:ai-permissions"))} className="mt-2 rounded-full border border-lilac/50 px-3 py-1 text-lilac transition hover:bg-lilac/15">
+              เปิดการตั้งค่าสิทธิ์ของหน้านี้
+            </button>
+          )}
+        </div>
+      )}
 
       <AnimatePresence>
         {reading && (

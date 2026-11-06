@@ -27,6 +27,10 @@ export interface OracleRequest {
 export interface OracleResponse {
   reply: string;
   demo: boolean;
+  /** why the answer came from Demo Mode (shown under the chat), if known */
+  note?: string;
+  /** the viewer can fix it: open the page's permission settings */
+  action?: "permissions";
 }
 
 export interface HistoryEntry {
